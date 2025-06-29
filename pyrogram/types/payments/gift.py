@@ -272,6 +272,22 @@ class Gift(Object):
         chats: Dict[int, "raw.types.Chat"] = None
     ) -> "Gift":
         owner_id = utils.get_raw_peer_id(getattr(star_gift, "owner_id", None))
+
+        if owner_id is not None:
+            data = (users.get(owner_id) if users else None) or (chats.get(owner_id) if chats else None)
+
+            if data is not None:
+                parsed_owner = types.Chat._parse_chat(client, data)
+                owner_name = parsed_owner.full_name
+            else:
+                # dark magic here, sometimes gift could not have owner at all
+                parsed_owner = "[owner_not_found]"
+                owner_name = "[owner_not_found]"
+        else:
+            # means owner hid his gift
+            parsed_owner = "[owner_hidden]"
+            owner_name = getattr(star_gift, "owner_name", None)
+
         return Gift(
             id=star_gift.id,
             name=star_gift.slug,
@@ -282,13 +298,8 @@ class Gift(Object):
             ) or None,
             available_amount=getattr(star_gift, "availability_issued", None),
             total_amount=getattr(star_gift, "availability_total", None),
-            owner=(
-                types.Chat._parse_chat(client, users.get(owner_id) or
-                chats.get(owner_id))
-                if owner_id is not None
-                else None
-            ),
-            owner_name=getattr(star_gift, "owner_name", None),
+            owner=parsed_owner,
+            owner_name=owner_name,
             owner_address=getattr(star_gift, "owner_address", None),
             ton_address=getattr(star_gift, "gift_address", None),
             is_upgraded=True,
